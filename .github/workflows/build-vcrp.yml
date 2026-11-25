@@ -1,0 +1,40 @@
+name: Build VCRP APK
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download & unpack VCRP from Google Drive
+        run: |
+          python3 -m pip install --upgrade pip pillow gdown
+          gdown "https://drive.google.com/uc?id=1ycqYc5VH4VlHQXLz88SjvyOqMlvYJyb_" -O VCRP-Android-Project.zip
+          unzip -o VCRP-Android-Project.zip
+      - name: Install Android SDK 35, NDK 27.2.12479018 & CMake 3.22.1
+        run: |
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: Build, sign & verify VCRP.apk
+        working-directory: VCRP
+        run: python3 scripts/build_all.py --variant debug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VCRP-APK
+          path: |
+            VCRP/dist/VCRP.apk
+            VCRP/dist/SHA256SUMS.txt
+            VCRP/dist/build-report.txt
+            VCRP/dist/build-log.txt
+          retention-days: 30 
